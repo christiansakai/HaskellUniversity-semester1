@@ -1,3 +1,3 @@
-# HaskellUniversity-semester1
+# HaskellUniversity Solutions
 
-Solutions for [HaskellUniversity](https://github.com/HaskellChamber/Haskell-University) for semester 1
+Solutions for [HaskellUniversity](https://github.com/HaskellChamber/Haskell-University)
