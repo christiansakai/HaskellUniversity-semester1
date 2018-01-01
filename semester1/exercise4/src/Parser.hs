@@ -1,9 +1,4 @@
-module Parser
-  ( Parser
-  , parse
-  , integer
-  , arithmeticOp
-  ) where
+module Parser where
 
 import Control.Applicative
   ( Alternative
@@ -12,18 +7,12 @@ import Control.Applicative
   , some
   , many
   )
-import Control.Monad
-  ( MonadPlus
-  , mzero
-  , mplus
-  )
-import Data.Char 
-  ( isDigit
-  , isSpace
-  )
 
-
--- Basic Type
+import Data.Char
+  ( isSpace
+  , isDigit
+  , isAlpha
+  )
 
 newtype Parser a = Parser { parse :: String -> [(a, String)] }
 
@@ -39,53 +28,61 @@ item = Parser $ \str ->
 instance Functor Parser where
   -- fmap :: (a -> b) -> Parser a -> Parser b
   fmap f parser = Parser $ \str ->
-    case parse parser str of
-      []        -> []
-      [(c, cs)] -> [(f c, cs)]
+    [(f a, str') | (a, str') <- parse parser str]
 
 instance Applicative Parser where
   -- pure :: a -> Parser a
-  pure c = Parser $ \str -> [(c, str)]
+  pure a = Parser $ \str -> [(a, str)]
 
-  -- <*> :: Parser (a -> b) -> Parser a -> Parser b
+  -- (<*>) :: Parser (a -> b) -> Parser a -> Parser b
   parserF <*> parserA = Parser $ \str ->
-    case parse parserF str of
-      []          -> []
-      [(f, str')] -> parse (fmap f parserA) str'
+    [ (f a, str'')
+    | (f, str') <- parse parserF str
+    , (a, str'') <- parse parserA str'
+    ]
 
 instance Alternative Parser where
   -- empty :: Parser a
-  empty = Parser $ \str -> [] 
+  empty = Parser $ \str -> []
 
-  -- <|> :: Parser a -> Parser a -> Parser a
-  parser <|> parser' = Parser $ \str ->
-    case parse parser str of
-      []        -> parse parser' str
-      [(c, cs)] -> [(c, cs)]
- 
+  -- (<|>) :: Parser a -> Parser a -> Parser a
+  parser1 <|> parser2 = Parser $ \str ->
+    case parse parser1 str of
+      []      -> parse parser2 str
+      result  -> result
+
+  -- Below are mutually recursive functions
+
   -- some :: Parser a -> Parser [a]
-  some parser = pure (:) <*> parser <*> many parser
+  some parser = 
+    -- Calls the parser first
+    -- and if it is successful (this is the base case)
+    -- then calls
+    -- it again many times until it fails 
+    -- (the failure is defined in `many`)
+    (:) <$> parser <*> many parser
 
   -- many :: Parser a -> Parser [a]
-  many parser = some parser <|> pure []
+  many parser = 
+    -- The first parse can fail (the base case
+    -- defined in some)
+    -- then if it does, calls the pure []
+    some parser <|> pure []
 
 instance Monad Parser where
   -- return :: a -> Parser a
   return = pure
 
-  -- >>= :: Parser a -> (a -> Parser b) -> Parser b
+  -- (>>=) :: Parser a -> (a -> Parser b) -> Parser b
   parser >>= f = Parser $ \str ->
     case parse parser str of
-      []        -> []
-      [(c, cs)] -> parse (f c) cs
+      []      -> []
+      result  -> 
+        [ (b, bs)
+        | (a, as) <- result
+        , (b, bs) <- parse (f a) as
+        ]
 
-instance MonadPlus Parser where
-  -- mzero :: Parser a
-  mzero = empty
-
-  -- mplus :: Parser a -> Parser a -> Parser a
-  parser `mplus` parser' = Parser $ \str ->
-    (parse parser str ++ parse parser' str)
 
 -- Primitives
 
@@ -94,24 +91,25 @@ satisfy f = item >>= \c ->
   if f c then return c
          else empty
 
-digit :: Parser Char
-digit = satisfy isDigit
-
-space :: Parser Char
-space = satisfy isSpace
-
 char :: Char -> Parser Char
 char c = satisfy (== c)
 
-nat :: Parser Int
-nat = do
-  cs <- some digit
-  return (read cs)
-
 spaces :: Parser ()
 spaces = do
-  many space
+  many (satisfy isSpace)
   return ()
+
+token :: Parser a -> Parser a
+token parser = do
+  spaces
+  entity <- parser
+  spaces
+  return entity
+
+nat :: Parser Int
+nat = do
+  digit <- some (satisfy isDigit)
+  return (read digit)
 
 int :: Parser Int
 int = (do
@@ -120,25 +118,15 @@ int = (do
   return (-n)
   ) <|> nat
 
-token :: Parser a -> Parser a
-token parser = do
-  spaces
-  cs <- parser
-  spaces
-  return (cs)
-
-natural :: Parser Int
-natural = token nat
-
 integer :: Parser Int
 integer = token int
 
-symbol :: Char -> Parser Char
-symbol sym = token (char sym)
-
-arithmeticOp :: Parser Char
-arithmeticOp = symbol '+'
-           <|> symbol '-'
-           <|> symbol '*'
-           <|> symbol '/'
-
+arithmetic :: Parser Char
+arithmetic = 
+  token arithmeticOp
+  
+  where arithmeticOp = 
+              char '+'
+          <|> char '-'
+          <|> char '*'
+          <|> char '/'

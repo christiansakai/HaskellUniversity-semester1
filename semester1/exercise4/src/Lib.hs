@@ -1,22 +1,19 @@
-module Lib
-    ( someFunc
-    , evalStack
-    ) where
+module Lib where
 
-import qualified Stack as S
-import qualified Parser as P
+-- import Control.Applicative (some)
+-- import qualified Parser as P
+-- import qualified Stack as S
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+-- polishParser :: P.Parser Int
+-- polishParser = do
+--   operands <- some P.integer
+--   operator <- P.arithmeticOp
 
--- parseExpr :: String -> P.Parser (S.Stack Expr)
--- parseExpr str = P.parse undefined str
+--   let left = head operands
+--       right = last operands
 
-evalStack :: S.Stack Int -> Int
-evalStack stack = 
-  case fst (S.pop stack) of
-    Nothing -> 0
-    Just n  -> n
-
-
-
+--   case operator of
+--     '+' -> return $ left + right 
+--     '-' -> return $ left - right 
+--     '*' -> return $ left * right 
+--     '/' -> return $ left `div` right 
