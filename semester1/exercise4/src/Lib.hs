@@ -4,6 +4,23 @@ import Parser
 import Control.Applicative 
   (some, (<|>)) 
 
+-- parseString :: String -> IO ()
+-- parseString str = do
+--   (result, "") <- parse polishParser str
+
+--   case result of
+--     Left err -> 
+--       print err
+--     Right expr ->
+--       print $ eval expr
+
+-- pol :: Parser Int
+-- pol = do
+--   result <- int <|> arithmetic
+--   case result of
+--     '-' ->
+
+
 data Expr
   = Lit Int
   | Add Expr Expr
@@ -24,19 +41,21 @@ polishParser = do
   exprs <- some parseInt
   ops <- some parseOp
 
-  if (length exprs) - 1 /= (length ops)
-    then return $ Left "expression error"
-    else
-      let revExprs = reverse exprs
-          revOps = reverse ops
-
-      in return $ Right (combine revExprs revOps)
+  -- if (length exprs) - 1 /= (length ops)
+  --   then return $ Left "expression error"
+  --   else
+  return $ 
+    Right (combine (reverse exprs) ops)
 
   where
     combine :: [Expr] -> [Expr -> Expr -> Expr] -> Expr
-    combine [expr] []             = expr
-    combine (expr:exprs) (op:ops) = op expr (combine exprs ops)
-  
+    combine [e] []            = e 
+    combine [e, e'] [o]       = o e' e
+    combine (e:e':es) (o:os)  = 
+      let es' = (o e' e):es
+          os' = os
+       in combine es' os'
+
 parseInt :: Parser Expr
 parseInt = do
   lit <- integer
